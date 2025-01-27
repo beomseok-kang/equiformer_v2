@@ -133,10 +133,16 @@ def get_args_parser():
     return parser
 
 def main(args, config_yml):
+    
+    # TODO: fix distributed training
 
-    utils.init_distributed_mode(args)
-    is_main_process = (args.rank == 0)
-
+    # utils.init_distributed_mode(args)
+    # is_main_process = (args.rank == 0)
+    is_main_process = True
+    args.distributed = False
+    args.rank = 0
+    args.local_rank = 0
+    
     _log = FileLogger(is_master=is_main_process, is_rank0=is_main_process, output_dir=args.output_dir)
     _log.info(args)
     
