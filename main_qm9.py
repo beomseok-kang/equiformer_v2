@@ -44,6 +44,9 @@ def get_args_parser():
     parser = argparse.ArgumentParser('Training equivariant networks', add_help=False)
     parser.add_argument('--config-file', type=str, default='qm9/U0_config.yml')
     parser.add_argument('--output-dir', type=str, default=None)
+    parser.add_argument('--load-checkpoint', type=str, default=None)
+    parser.add_argument('--save-checkpoint', action='store_true')
+    parser.set_defaults(save_checkpoint=False)
     # network architecture
     # parser.add_argument('--model-name', type=str, default='transformer_ti')
     # parser.add_argument('--input-irreps', type=str, default=None)
@@ -302,7 +305,17 @@ def main(args, config_yml):
     best_epoch, best_train_err, best_val_err, best_test_err = 0, float('inf'), float('inf'), float('inf')
     best_ema_epoch, best_ema_val_err, best_ema_test_err = 0, float('inf'), float('inf')
     
-    for epoch in range(optim_params["max_epochs"]):
+    if args.load_checkpoint is not None:
+        checkpoint = torch.load(args.load_checkpoint)
+        model.cpu().load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        lr_scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        model = model.to(device)
+    else:
+        start_epoch = 0
+    
+    for epoch in range(start_epoch, optim_params["max_epochs"]):
         
         epoch_start_time = time.perf_counter()
         
@@ -340,6 +353,17 @@ def main(args, config_yml):
         info_str = 'Best -- epoch={}, train MAE: {:.5f}, val MAE: {:.5f}, test MAE: {:.5f}\n'.format(
             best_epoch, best_train_err, best_val_err, best_test_err)
         _log.info(info_str)
+        
+        torch.save(
+            {
+                'model_state_dict': model.cpu().state_dict(), 
+                'optimizer_state_dict': optimizer.state_dict(), 
+                'scheduler_state_dict': lr_scheduler.state_dict(),
+                'epoch': epoch, # should start from the next epoch
+            }, 
+            f'{args.output_dir}/checkpoint.pth'
+        )
+        model = model.to(device)
         
         # evaluation with EMA
         if model_ema is not None:

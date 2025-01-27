@@ -8,3 +8,4 @@ python main_qm9.py\
     --no-model-ema \
     --no-standardize \
     --no-model-ema \
+    --load-checkpoint 'train_results/qm9/U0/checkpoint.pth'
